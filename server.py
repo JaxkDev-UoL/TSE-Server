@@ -1,48 +1,14 @@
-from os import mkdir
-from os.path import exists, join as pjoin
+from json import dumps
+from os.path import join as pjoin
+from tempfile import TemporaryFile
 from urllib.parse import parse_qs, urlparse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-def getDirectory():
-    from inspect import getsourcefile
-    from os.path import abspath
-
-    return abspath(getsourcefile(lambda:0) + "/../")
 
 class StoreHandler(BaseHTTPRequestHandler):
-    directory = pjoin(getDirectory(), 'Data')
-    if(not exists(directory)):
-        mkdir(directory)
-    if(not exists(pjoin(directory, 'Raw'))):
-        mkdir(pjoin(directory, 'Raw'))
 
     def do_GET(self):
         self.path = self.path.lower()
-        params = parse_qs(urlparse(self.path).query)
-        if(self.path.startswith('/gait/')):
-            uuid = params.get('uuid', None)
-            if(uuid == None):
-                self.send_response(400, 'No UUID specified')
-                self.end_headers()
-                self.wfile.write(b'No UUID specified')
-                return
-            uuid = uuid[0]
-            sub = self.path[6:].split('?')[0]
-            if(sub == 'download'):
-                self.get_download(uuid)
-                return
-            if(sub == 'status'):
-                self.get_status(uuid)
-                return
-            if(sub == 'results'):
-                self.get_results(uuid);
-                return
-            
-            self.send_response(404, 'Nothing here.')
-            self.end_headers()
-            self.wfile.write(b'Not Found.')
-            
-
         if(self.path == '/' or self.path == None or self.path == '/status' or self.path == '/status/'):
             self.send_response(200, 'OK')
             self.end_headers()
@@ -57,7 +23,7 @@ class StoreHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         self.path = self.path.lower()
         params = parse_qs(urlparse(self.path).query)
-        if(self.path.startswith('/gait/')):
+        if(self.path.startswith('/gait_analysis')):
             uuid = params.get('uuid', None)
             if(uuid == None):
                 self.send_response(400, 'No UUID')
@@ -66,10 +32,8 @@ class StoreHandler(BaseHTTPRequestHandler):
                 return
             uuid = uuid[0]
         
-            sub = self.path[6:].split('?')[0]
-            if(sub == 'upload'):
-                self.post_upload(uuid)
-                return
+            self.post_upload(uuid)
+            return
 
         self.send_response(404, 'Nothing here.')
         self.end_headers()
@@ -77,44 +41,24 @@ class StoreHandler(BaseHTTPRequestHandler):
         return
 
     def post_upload(self, uuid):
-        length = self.headers['content-length']
+        length = self.headers['Content-length']
         data = self.rfile.read(int(length))
-
-        with open(pjoin(self.directory, 'raw', uuid + '.mp4'), 'wb') as fh:
-            fh.write(data)
+        f = TemporaryFile() # Creates temp file in OS temp folder.
+        f.write(data)
+        f.flush()
 
         self.send_response(200)
         self.end_headers()
         
-        print("New analysis video uploaded: " + uuid)
-        #TODO, Queue for processing
+        print("New analysis video uploaded: " + uuid + ".mp4  >  " + f.name)
+        
+        #TODO Gait analysis here. (Processing)
+
+        f.close() # Deletes temp file.
+
+        data = {'status': 'Successful', 'results': ['todo?']}
+        self.wfile.write(dumps(data).encode())
         return;
-
-    # Allows client to download original video.
-    def get_download(self, uuid):
-        self.send_response(200)
-        self.send_header('content-type', 'video/mp4')
-        self.end_headers()
-
-        with open(pjoin(self.directory, 'raw', uuid + '.mp4'), 'rb') as fh:
-            self.wfile.write(fh.read())
-    
-    def get_status(self, uuid):
-        self.send_response(200)
-        self.send_header('content-type', 'application/json')
-        self.end_headers()
-
-        #TODO: Check if results exist.?
-        self.wfile.write(b'{"status": "Pending"}')
-
-    def get_results(self, uuid):
-        self.send_response(200)
-        self.send_header('content-type', 'application/json')
-        self.end_headers()
-
-        #TODO: Check if results exist first.
-        #TODO: Actual results (file? or DB?).
-        self.wfile.write(b'{"results": "TODO"}')
 
 def start():
     server = ThreadingHTTPServer(('0.0.0.0', 1234), StoreHandler)
