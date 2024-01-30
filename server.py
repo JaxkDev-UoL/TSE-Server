@@ -96,7 +96,7 @@ class StoreHandler(BaseHTTPRequestHandler):
         self.send_header('content-type', 'application/json')
         self.end_headers()
 
-        #TODO: Check if results exist?
+        #TODO: Check if results exist.?
         self.wfile.write(b'{"status": "Pending"}')
 
     def get_results(self, uuid):
