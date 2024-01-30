@@ -2,9 +2,9 @@ from server import start, getDirectory
 
 print("TSE Server starting...")
 
-print(getDirectory())
-
 start();
+
+# forever loop ^
 
 
 

@@ -21,7 +21,7 @@ class StoreHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(b'No UUID specified')
                 return
-
+            uuid = uuid[0]
             sub = self.path[6:].split('?')[0]
             if(sub == 'download'):
                 self.get_download(uuid)
@@ -38,7 +38,7 @@ class StoreHandler(BaseHTTPRequestHandler):
             self.wfile.write(b'Not Found.')
             
 
-        if(self.path == '' or self.path == None or self.path == 'status'):
+        if(self.path == '/' or self.path == None or self.path == '/status' or self.path == '/status/'):
             self.send_response(200, 'OK')
             self.end_headers()
             self.wfile.write(b'OK')
@@ -59,6 +59,7 @@ class StoreHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(b'No UUID specified')
                 return
+            uuid = uuid[0]
         
             sub = self.path[6:].split('?')[0]
             if(sub == 'upload'):
